@@ -5,7 +5,15 @@
       "Bash(python3 -m py_compile custom_components/zeversolar/*.py tests/test_protocol.py)",
       "Bash(python3 tools/probe.py --help)",
       "Bash(python3 -m py_compile custom_components/zeversolar/*.py tools/*.py tests/*.py)",
-      "Bash(python3 -)"
+      "Bash(python3 -)",
+      "WebSearch",
+      "WebFetch(domain:www.scribd.com)",
+      "WebFetch(domain:www.zeversolar.com)",
+      "WebFetch(domain:res.cloudinary.com)",
+      "Bash(python3 -c ' *)",
+      "Bash(command -v pdftotext mutool gs qpdf)",
+      "Bash(python3 -c \"import PyPDF2\")",
+      "Bash(python3 -c \"import fitz; print\\('pymupdf ok'\\)\")"
     ]
   }
 }

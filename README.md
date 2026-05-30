@@ -31,13 +31,81 @@ finding them with the probe.
 
 ## Install
 
-Copy the integration into your Home Assistant config directory:
+This is a **custom component** (domain `zeversolar`). It is configured in
+YAML — there is no UI config-flow — so installation is two parts: get the files
+into Home Assistant, then add the [configuration](#configure-configurationyaml)
+and restart.
+
+### 1. Locate your Home Assistant `config` directory
+
+This is the folder that contains `configuration.yaml`. Where it lives depends on
+your install type:
+
+| Install type | `config` directory |
+|---|---|
+| Home Assistant OS / Supervised | `/config` (via the **File editor**, **Samba**, or **SSH/Terminal** add-on) |
+| Home Assistant Container (Docker) | the host folder you bind-mounted to `/config` |
+| Home Assistant Core (venv) | typically `~/.homeassistant/` |
+
+### 2. Copy the integration in
+
+Create the `custom_components/zeversolar/` folder under `config` and copy the
+**contents of [`custom_components/zeversolar/`](custom_components/zeversolar/)**
+from this repo into it. The result must look exactly like:
 
 ```
-<config>/custom_components/zeversolar/
+<config>/
+├── configuration.yaml
+└── custom_components/
+    └── zeversolar/
+        ├── __init__.py
+        ├── manifest.json
+        ├── const.py
+        ├── protocol.py
+        ├── client.py
+        ├── coordinator.py
+        └── sensor.py
 ```
 
-Restart Home Assistant.
+Pick whichever transfer method matches your setup:
+
+- **Samba add-on** — browse to the `\\<ha-host>\config` share and drag the
+  folder in.
+- **SSH / Terminal add-on** (or Container host):
+
+  ```bash
+  cd /config
+  mkdir -p custom_components
+  git clone https://github.com/erwin/ha-zeversolar-modbus /tmp/zeversolar
+  cp -r /tmp/zeversolar/custom_components/zeversolar custom_components/
+  ```
+
+- **File editor / Studio Code Server add-on** — create the files and paste the
+  contents manually.
+
+> **HACS (optional):** HACS → ⋮ → *Custom repositories* → add
+> `https://github.com/erwin/ha-zeversolar-modbus` as category **Integration**,
+> then install it. HACS just copies the same files into
+> `custom_components/zeversolar/` for you.
+
+### 3. Configure and restart
+
+Add the sensor platform to `configuration.yaml` (see
+[Configure](#configure-configurationyaml) below), then restart Home Assistant
+(**Developer Tools → YAML → Restart**, or **Settings → System → Restart**).
+
+### 4. Verify it loaded
+
+After the restart:
+
+- The `zeversolar` entities (e.g. **Zeversolar Current Power**) appear under
+  **Settings → Devices & Services → Entities**.
+- **Settings → System → Logs** shows `custom_components.zeversolar` lines and no
+  import errors.
+
+If entities are missing or show *unavailable*, it's almost always the bus link,
+not the install — work through [Troubleshooting](#troubleshooting-connects-but-times-out)
+and confirm the wiring/serial settings first.
 
 ## Configure (`configuration.yaml`)
 
