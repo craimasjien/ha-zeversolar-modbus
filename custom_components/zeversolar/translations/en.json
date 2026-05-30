@@ -1,0 +1,34 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Zeversolar inverter",
+        "description": "Connect to the Waveshare RS485-to-Ethernet bridge in front of your Zeversolar inverter.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "name": "Name",
+          "passive": "Passive (listen-only) mode",
+          "inverter_address": "Inverter address (active mode only)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the bridge. Check the host and port."
+    },
+    "abort": {
+      "already_configured": "This inverter is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zeversolar options",
+        "data": {
+          "scan_interval": "Scan interval (seconds)",
+          "log_raw_frames": "Log raw frames (debug)"
+        }
+      }
+    }
+  }
+}

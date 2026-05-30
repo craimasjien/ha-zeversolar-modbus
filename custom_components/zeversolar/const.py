@@ -15,6 +15,8 @@ CONF_INVERTER_ADDRESS = "inverter_address"
 CONF_LOG_RAW_FRAMES = "log_raw_frames"
 CONF_PASSIVE = "passive"
 
+DEFAULT_LOG_RAW_FRAMES = False
+
 # Default to passive (listen-only): most installs keep the Zeversolar
 # monitoring module as the bus master, and we just read the traffic it solicits.
 DEFAULT_PASSIVE = True

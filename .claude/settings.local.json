@@ -13,7 +13,13 @@
       "Bash(python3 -c ' *)",
       "Bash(command -v pdftotext mutool gs qpdf)",
       "Bash(python3 -c \"import PyPDF2\")",
-      "Bash(python3 -c \"import fitz; print\\('pymupdf ok'\\)\")"
+      "Bash(python3 -c \"import fitz; print\\('pymupdf ok'\\)\")",
+      "Bash(python3 -m py_compile custom_components/zeversolar/*.py)",
+      "Bash(python3 -c \"import homeassistant; print\\('HA', homeassistant.__version__\\)\")",
+      "Bash(pip3 show *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(python3 -m py_compile *.py)",
+      "Bash(python3 -c \"import json; json.load\\(open\\('manifest.json'\\)\\); json.load\\(open\\('strings.json'\\)\\); json.load\\(open\\('translations/en.json'\\)\\); print\\('JSON OK'\\)\")"
     ]
   }
 }

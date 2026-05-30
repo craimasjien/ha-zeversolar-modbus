@@ -1,6 +1,7 @@
 {
   "domain": "zeversolar",
   "name": "Zeversolar (Eversolar protocol)",
+  "config_flow": true,
   "version": "0.1.0",
   "documentation": "https://github.com/erwin/ha-zeversolar-modbus",
   "issue_tracker": "https://github.com/erwin/ha-zeversolar-modbus/issues",

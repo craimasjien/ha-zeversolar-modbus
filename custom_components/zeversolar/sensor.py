@@ -2,22 +2,15 @@
 
 from __future__ import annotations
 
-import logging
-
-import voluptuous as vol
-
 from homeassistant.components.sensor import (
-    PLATFORM_SCHEMA,
     SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    CONF_HOST,
     CONF_NAME,
-    CONF_PORT,
-    CONF_SCAN_INTERVAL,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
@@ -27,28 +20,17 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.device_info import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    CONF_INVERTER_ADDRESS,
-    CONF_LOG_RAW_FRAMES,
-    CONF_PASSIVE,
-    DEFAULT_INVERTER_ADDRESS,
     DEFAULT_NAME,
-    DEFAULT_PASSIVE,
-    DEFAULT_PORT,
-    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     MANUFACTURER,
     MODEL,
 )
-from .coordinator import ZeversolarClient, ZeversolarCoordinator
-
-_LOGGER = logging.getLogger(__name__)
+from .coordinator import ZeversolarCoordinator
 
 # Keys must match those produced by protocol.decode_runtime().
 SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
@@ -131,49 +113,17 @@ SENSOR_DESCRIPTIONS: tuple[SensorEntityDescription, ...] = (
     ),
 )
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_HOST): cv.string,
-        vol.Optional(CONF_PORT, default=DEFAULT_PORT): cv.port,
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-        vol.Optional(CONF_PASSIVE, default=DEFAULT_PASSIVE): cv.boolean,
-        vol.Optional(
-            CONF_INVERTER_ADDRESS, default=DEFAULT_INVERTER_ADDRESS
-        ): vol.All(vol.Coerce(int), vol.Range(min=1, max=254)),
-        vol.Optional(CONF_LOG_RAW_FRAMES, default=False): cv.boolean,
-        vol.Optional(
-            CONF_SCAN_INTERVAL,
-            default=cv.time_period(DEFAULT_SCAN_INTERVAL),
-        ): cv.time_period,
-    }
-)
 
-
-async def async_setup_platform(
+async def async_setup_entry(
     hass: HomeAssistant,
-    config: ConfigType,
+    entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Set up the Zeversolar sensors from YAML configuration."""
-    client = ZeversolarClient(
-        host=config[CONF_HOST],
-        port=config[CONF_PORT],
-        inverter_address=config[CONF_INVERTER_ADDRESS],
-        log_raw_frames=config[CONF_LOG_RAW_FRAMES],
-        passive=config[CONF_PASSIVE],
-    )
-    coordinator = ZeversolarCoordinator(
-        hass, client, int(config[CONF_SCAN_INTERVAL].total_seconds())
-    )
-
-    # Prime the coordinator. We do not raise on failure: the inverter is dark at
-    # night, so entities should come up "unavailable" and recover on their own.
-    await coordinator.async_refresh()
-
-    base_id = f"{config[CONF_HOST]}_{config[CONF_PORT]}"
+    """Set up the Zeversolar sensors from a config entry."""
+    coordinator: ZeversolarCoordinator = entry.runtime_data
+    name = {**entry.data, **entry.options}.get(CONF_NAME, DEFAULT_NAME)
     async_add_entities(
-        ZeversolarSensor(coordinator, description, config[CONF_NAME], base_id)
+        ZeversolarSensor(coordinator, description, name, entry.entry_id)
         for description in SENSOR_DESCRIPTIONS
     )
 
@@ -181,7 +131,7 @@ async def async_setup_platform(
 class ZeversolarSensor(CoordinatorEntity[ZeversolarCoordinator], SensorEntity):
     """A single decoded value exposed as a Home Assistant sensor."""
 
-    _attr_has_entity_name = False
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -193,7 +143,6 @@ class ZeversolarSensor(CoordinatorEntity[ZeversolarCoordinator], SensorEntity):
         """Initialise the sensor entity."""
         super().__init__(coordinator)
         self.entity_description = description
-        self._attr_name = f"{name} {description.name}"
         self._attr_unique_id = f"{DOMAIN}_{base_id}_{description.key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, base_id)},

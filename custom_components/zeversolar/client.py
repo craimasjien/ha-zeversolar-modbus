@@ -75,6 +75,18 @@ class ZeversolarClient:
         self._buffer = b""
         _LOGGER.debug("Connected to %s:%s", self._host, self._port)
 
+    async def async_test_connection(self) -> None:
+        """Open and immediately close the socket to verify host/port reachability.
+
+        Used by the config flow: a full data read can block for the whole
+        passive polling window (and yields nothing at night), so we only confirm
+        that the bridge accepts a TCP connection here.
+        """
+        try:
+            await self._connect()
+        finally:
+            await self.close()
+
     async def close(self) -> None:
         """Drop the socket and forget any registration."""
         self._registered = False
