@@ -14,9 +14,20 @@ translation on the bridge).
 
 - Inverter: Zeversolar 2000s, RS485 wired to a Waveshare RS485→Ethernet bridge.
 - Bridge mode: **TCP Server**, *transparent / raw* (no Modbus TCP↔RTU).
-- Serial settings on the bridge must match the inverter (typically
-  **9600 baud, 8N1**).
 - Bridge reachable at e.g. `192.168.2.200`, port `502` (or `4196`).
+
+### Verified serial / wiring settings (confirmed on real hardware)
+
+| Setting | Value |
+|---|---|
+| Baud | **9600** |
+| Framing | **8 / None / 1** |
+| RS485 A/B (D+/D−) | **may be swapped** vs. the obvious labelling — see troubleshooting |
+
+If you see only garbage and never an `aa 55` header, fix these first — the
+component can't do anything until the bridge delivers clean frames. The
+[Troubleshooting](#troubleshooting-connects-but-times-out) section walks through
+finding them with the probe.
 
 ## Install
 
@@ -36,12 +47,26 @@ sensor:
     host: 192.168.2.200
     port: 502              # or 4196 — whatever the Waveshare raw socket uses
     name: Zeversolar
-    inverter_address: 10   # address we assign during registration (1..254)
+    passive: true          # listen to the existing bus master (recommended)
     scan_interval: 30      # seconds
-    log_raw_frames: true   # SEE CALIBRATION BELOW — turn off once verified
+    # inverter_address: 10 # only used when passive: false (we become master)
+    # log_raw_frames: true # dump every frame to the log (calibration/debug)
 ```
 
 Restart Home Assistant after editing.
+
+### Passive vs. active mode
+
+Most Zeversolar installs keep the **monitoring module (ComBox / Wi-Fi /
+Ethernet) as the RS485 bus master**, continuously polling the inverter. Two
+masters on one bus collide, so this integration defaults to **`passive: true`**:
+it transmits nothing and simply decodes the `QueryNormalInfo` responses the
+existing master already solicits. No registration, no contention, and your
+existing monitoring keeps working untouched.
+
+Set **`passive: false`** only if there is *no* other master on the bus (e.g. you
+removed the monitoring module). In active mode the component performs the
+discovery → assign-address → poll handshake itself, using `inverter_address`.
 
 ### Entities created
 
@@ -50,20 +75,20 @@ Restart Home Assistant after editing.
 | `Zeversolar Current Power` | W    | ✅ |
 | `Zeversolar Energy Today`  | kWh  | ✅ |
 | `Zeversolar Energy Total`  | kWh  | ✅ |
-| PV Voltage / AC Voltage / AC Current / AC Frequency / Temperature | V·A·Hz·°C | disabled (enable in UI) |
+| PV Voltage / PV Current / AC Voltage / AC Current / AC Frequency / Temperature / Operating Hours | V·A·Hz·°C·h | disabled (enable in UI) |
 
 `Energy Today` / `Energy Total` use `state_class: total_increasing`, so they
 plug straight into the HA **Energy dashboard**.
 
-## ⚠️ Calibration — required before you trust the numbers
+## Data offsets — calibrated, but model-dependent
 
-The framing, checksum, and registration handshake are fully implemented and
-unit-tested. **The byte offsets of the data payload are a best-guess**: in the
-Eversolar protocol the data layout is negotiated per inverter model, and this
-build assumes the common single-phase / single-MPPT (Goodwe-style) layout. Your
-2000s may differ.
+The payload offsets in `FIELD_MAP` ([`protocol.py`](custom_components/zeversolar/protocol.py))
+are **calibrated against real `QueryNormalInfo` frames captured from a Zeversolar
+2000s** and cross-checked (AC volts × amps = reported watts; energy ÷ hours =
+believable average). For an identical 2000s they should be correct out of the box.
 
-To lock the offsets to your hardware:
+The Eversolar payload layout can still vary by model/firmware, so if any value
+looks wrong, re-verify against your inverter's LCD:
 
 1. Keep `log_raw_frames: true` (the default) and add to `configuration.yaml`:
 
@@ -163,6 +188,16 @@ python3 tools/probe.py 192.168.2.200 --port 502 --sniff 15
   parity) are off, or A/B are swapped — framing is corrupted.
 - **A valid frame** → the link is good; it's a parsing/offset matter.
 
+The byte *character* tells you which way to turn the baud: streams saturated
+with `0xff` mean the bridge baud is **too high** (oversampling a slower signal);
+sparse, mostly-`0x00` streams mean it's **too low**. As you approach the right
+rate the bytes look less like filler and more like varied data.
+
+**What worked on the reference unit:** the data was garbled at every baud until
+the **A/B wires were swapped** at the Waveshare; with A/B swapped and **9600 8N1**
+the `aa 55` frames came through cleanly. The capture also revealed an existing
+bus master — hence `passive: true` is the default (see above).
+
 ## Tests
 
 ```
@@ -173,6 +208,10 @@ Covers checksum, frame round-trip, multi-frame + garbage resync, partial-frame
 buffering, bad-checksum recovery, and `FIELD_MAP` decoding.
 
 ## Protocol reference
+
+For a full, worked walk-through of how a raw frame becomes human-readable values
+(frame anatomy, checksum arithmetic, and a byte-by-byte decode of a real
+capture), see **[docs/PROTOCOL.md](docs/PROTOCOL.md)**.
 
 ```
 AA 55 | SRC(2) | DST(2) | CC(1) FC(1) | LEN(1) | DATA(LEN) | CRC(2, big-endian)

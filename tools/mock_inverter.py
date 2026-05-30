@@ -26,27 +26,55 @@ sys.path.insert(
 from zeversolar import protocol  # noqa: E402
 
 SERIAL = b"AB1234567890XYZ"
-MOCK_ADDR = 0x000A  # src we report once "registered"
+MOCK_ADDR = 0x00F1  # inverter address (matches the real captured frame)
+OTHER_MASTER = 0x0100  # the pre-existing monitoring master
 
 
 def _runtime_payload() -> bytes:
-    """A 20-byte payload matching the default FIELD_MAP offsets/scales."""
-    p = bytearray(20)
+    """A 50-byte payload matching the calibrated FIELD_MAP offsets/scales."""
+    p = bytearray(50)
     p[0:2] = (250).to_bytes(2, "big")  # temperature 25.0 C
     p[2:4] = (1234).to_bytes(2, "big")  # energy_today 12.34 kWh
     p[4:6] = (3200).to_bytes(2, "big")  # pv_voltage 320.0 V
-    p[6:8] = (65).to_bytes(2, "big")  # ac_current 6.5 A
-    p[8:10] = (2300).to_bytes(2, "big")  # ac_voltage 230.0 V
-    p[10:12] = (5000).to_bytes(2, "big")  # ac_frequency 50.00 Hz
-    p[12:14] = (1500).to_bytes(2, "big")  # power 1500 W
-    p[16:20] = (123456).to_bytes(4, "big")  # energy_total 12345.6 kWh
+    p[8:10] = (65).to_bytes(2, "big")  # pv_current 6.5 A
+    p[12:14] = (65).to_bytes(2, "big")  # ac_current 6.5 A
+    p[14:16] = (2300).to_bytes(2, "big")  # ac_voltage 230.0 V
+    p[16:18] = (5000).to_bytes(2, "big")  # ac_frequency 50.00 Hz
+    p[18:20] = (1500).to_bytes(2, "big")  # power 1500 W
+    p[22:26] = (123456).to_bytes(4, "big")  # energy_total 12345.6 kWh
+    p[26:30] = (8760).to_bytes(4, "big")  # operating_hours 8760 h
+    p[30:32] = (1).to_bytes(2, "big")  # status normal
     return bytes(p)
+
+
+def _runtime_frame() -> bytes:
+    """An unsolicited QueryNormalInfo response, as the real bus carries."""
+    return protocol.build_frame(
+        MOCK_ADDR,
+        OTHER_MASTER,
+        protocol.CC_READ,
+        protocol.FC_QUERY_NORMAL_INFO | protocol.RESPONSE_BIT,
+        _runtime_payload(),
+    )
+
+
+async def _emit_unsolicited(writer: asyncio.StreamWriter) -> None:
+    """Mimic the existing master: push a runtime frame onto the bus every 3s."""
+    try:
+        while True:
+            await asyncio.sleep(3)
+            writer.write(_runtime_frame())
+            await writer.drain()
+            print("[mock] emitted unsolicited runtime frame")
+    except (ConnectionError, asyncio.CancelledError):
+        pass
 
 
 async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     peer = writer.get_extra_info("peername")
     print(f"[mock] client connected: {peer}")
     buffer = b""
+    emitter = asyncio.ensure_future(_emit_unsolicited(writer))
     try:
         while True:
             chunk = await reader.read(256)
@@ -63,6 +91,7 @@ async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> 
     except (ConnectionError, asyncio.IncompleteReadError):
         pass
     finally:
+        emitter.cancel()
         print(f"[mock] client disconnected: {peer}")
         writer.close()
 
