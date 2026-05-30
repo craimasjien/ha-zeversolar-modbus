@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-DOMAIN = "zeversolar"
+DOMAIN = "zeversolar_modbus"
 
 DEFAULT_NAME = "Zeversolar"
 # The Waveshare default raw-socket port is 4196; some setups use 502.

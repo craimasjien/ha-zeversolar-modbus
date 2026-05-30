@@ -1,5 +1,5 @@
 {
-  "domain": "zeversolar",
+  "domain": "zeversolar_modbus",
   "name": "Zeversolar (Eversolar protocol)",
   "config_flow": true,
   "version": "0.1.0",

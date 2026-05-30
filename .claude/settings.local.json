@@ -19,7 +19,8 @@
       "Bash(pip3 show *)",
       "Bash(echo \"exit: $?\")",
       "Bash(python3 -m py_compile *.py)",
-      "Bash(python3 -c \"import json; json.load\\(open\\('manifest.json'\\)\\); json.load\\(open\\('strings.json'\\)\\); json.load\\(open\\('translations/en.json'\\)\\); print\\('JSON OK'\\)\")"
+      "Bash(python3 -c \"import json; json.load\\(open\\('manifest.json'\\)\\); json.load\\(open\\('strings.json'\\)\\); json.load\\(open\\('translations/en.json'\\)\\); print\\('JSON OK'\\)\")",
+      "Bash(git mv *)"
     ]
   }
 }
